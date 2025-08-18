@@ -15,45 +15,66 @@ function App() {
         height: 1200
       });
 
+      // プレイヤーの設定
+      const playerWidth = 60;
+      const playerHeight = 60;
+      const playerColor = 0xff0000;
+      const key = {
+        left: "KeyA",
+        right: "KeyD",
+        up: "KeyW",
+        down: "KeyS",
+        jump: "KeyJ",
+        sprint: "KeyK"
+      };
+      const gravity = 0.3;
+      let gravityMultiplier = 1;
+      const jump = {
+        ground: 15,
+        air: 13,
+        wall: 10,
+        sprint: 3
+      };
+      const friction = {
+        ground: 0.9,
+        air: 0.975
+      };
+      const speed = {
+        ground: 4,
+        air: 6
+      };
+      const multiplier = {
+        wallJump: 1.5,
+        sprint: 2.5
+      };
+      const moveCooldown = {
+        wallJump: 30,
+        sprint: 40
+      };
+
+      // プレイヤーの状態
+      let direction = 1;
+      const velocity = { x: 0, y: 0 };
+      const moveCoolCount = { wallJump: 0, sprint: 0 };
+      let isOnGround = false;
+      let isOnWall = false;
+      let isDoubleJumped = false;
+      let isJumpKeyPressed = false;
+      let isSprintKeyPressed = false;
+
       // プレイヤーを作成
       const player = new Graphics();
-      const w = 60; // プレイヤーの幅
-      const h = w; // プレイヤーの高さ
-      player.rect(0, 0, w, h);
-      player.fill(0xff0000);
-      player.pivot.set(w / 2, h / 2);
+      player.rect(0, 0, playerWidth, playerHeight);
+      player.fill(playerColor);
+      player.pivot.set(playerWidth / 2, playerHeight / 2);
       player.x = app.screen.width / 2;
       player.y = app.screen.height / 2;
       app.stage.addChild(player);
 
-      let direction = 1; // 移動方向（1: 右, -1: 左）
-      let velocityX = 0; // X方向の速度
-      let velocityY = 0; // Y方向の速度
-      const gravity = 0.3; // 重力
-      let gravityModifier = 1; // 重力の倍率
-      const groundJump = 15; // 地上ジャンプ力
-      const airJump = 13; // 空中ジャンプ力
-      const wallJump = 10; // 壁ジャンプ力
-      const sprintJump = 3; // スプリントジャンプ力
-      const groundFriction = 0.9; // 地上摩擦
-      const airFriction = 0.975; // 空中摩擦
-      const groundSpeed = 4; // 地上移動速度
-      const airSpeed = 6; // 空中移動速度
-      const wallJumpSpeed = 1.5; // 壁ジャンプ速度
-      const sprintSpeed = 2.5; // スプリント速度倍率
-      const minY = h / 2; // プレイヤーの最小Y座標
-      const maxY = app.screen.height - h/2; // プレイヤーの最大Y座標
-      const minX = w / 2; // プレイヤーの最小X座標
-      const maxX = app.screen.width - w / 2; // プレイヤーの最大X座標
-      const sprintCooldown = 40; // スプリントクールダウン時間
-      let sprintCount = 0; // スプリントクールダウンカウント
-      const wallJumpCooldown = 30; // 壁ジャンプクールダウン時間
-      let wallJumpCount = 0; // 壁ジャンプクールダウンカウント
-      let isOnGround = true; // 着地フラグ
-      let isOnWall = false; // 壁に接触しているか
-      let isDoubleJumped = false; // 空中ジャンプフラグ
-      let isJumpKeyPressed = false; // ジャンプキーが押されたか
-      let isSprintKeyPressed = false; // スプリントキーが押されたか
+      const minY = playerHeight / 2;
+      const maxY = app.screen.height - playerHeight / 2;
+      const minX = playerWidth / 2;
+      const maxX = app.screen.width - playerWidth / 2;
 
       // キー入力の状態を管理するオブジェクト
       const keys: { [key: string]: boolean } = {};
@@ -66,106 +87,116 @@ function App() {
       // キーが離されたときの処理
       const onKeyUp = (e: KeyboardEvent) => {
         keys[e.code] = false;
-        if (e.code === 'KeyJ') {
+        if (e.code === key.jump) {
           isJumpKeyPressed = false;
         }
-        if (e.code === 'KeyK') {
+        if (e.code === key.sprint) {
           isSprintKeyPressed = false;
         }
       };
 
       // ゲームループ
       const gameLoop = () => {
-        // キー入力の処理
-        if (keys['KeyW'] && velocityY > 0 && !isOnGround) {
-          gravityModifier = 0.5;
-        } else if (keys['KeyS'] && velocityY > 0 && !isOnGround) {
-          gravityModifier = 2;
+        // 落下速度の調整
+        if (!isOnGround && velocity.y > 0) {
+          if (keys[key.up]) {
+            gravityMultiplier = 0.5;
+          } else if (keys[key.down]) {
+            gravityMultiplier = 2;
+          } else {
+            gravityMultiplier = 1;
+          }
         } else {
-          gravityModifier = 1;
+          gravityMultiplier = 1;
         }
-        if (sprintCount <= 0 && wallJumpCount <= 0) {
-          if (keys['KeyA'] && keys['KeyD']) {
-            velocityX = 0;
-          } else if (keys['KeyA']) {
-            if (velocityX > -airSpeed) {
+        // 移動
+        if (moveCoolCount.sprint <= 0 && moveCoolCount.wallJump <= 0) {
+          if (keys[key.left] && keys[key.right]) {
+            velocity.x = 0;
+          } else if (keys[key.left]) {
+            if (velocity.x > -speed.air) {
               if (isOnGround) {
-                velocityX = -groundSpeed;
+                velocity.x = -speed.ground;
               } else {
-                velocityX = -airSpeed;
+                velocity.x = -speed.air;
               }
             }
             direction = -1;
-          } else if (keys['KeyD']) {
-            if (velocityX < airSpeed) {
+          } else if (keys[key.right]) {
+            if (velocity.x < speed.air) {
               if (isOnGround) {
-                velocityX = groundSpeed;
+                velocity.x = speed.ground;
               } else {
-                velocityX = airSpeed;
+                velocity.x = speed.air;
               }
             }
             direction = 1;
           }
         }
-        if (keys['KeyJ'] && !isJumpKeyPressed) {
+        if (keys[key.jump] && !isJumpKeyPressed) {
           if (isOnGround) {
-            velocityY = -groundJump;
+            velocity.y = -jump.ground;
             isJumpKeyPressed = true;
-          } else if (isOnWall && !isOnGround && wallJumpCount <= 0) {
-            velocityX = airSpeed * wallJumpSpeed * -direction;
-            velocityY = -wallJump;
+          } else if (isOnWall && !isOnGround && moveCoolCount.wallJump <= 0) {
+            velocity.x = speed.air * multiplier.wallJump * -direction;
+            velocity.y = -jump.wall;
             isDoubleJumped = false;
-            wallJumpCount = wallJumpCooldown;
-            direction = -direction
+            moveCoolCount.wallJump = moveCooldown.wallJump;
+            direction = -direction;
             isJumpKeyPressed = true;
           } else if (!isDoubleJumped) {
-            velocityY = -airJump;
+            velocity.y = -jump.air;
             isDoubleJumped = true;
             isJumpKeyPressed = true;
           }
           isOnGround = false;
         }
-        if (keys['KeyK'] && !isSprintKeyPressed && sprintCount <= 0 && wallJumpCount <= 0) {
-          velocityX = airSpeed * sprintSpeed * direction;
-          velocityY = -sprintJump;
-          sprintCount = sprintCooldown;
+        if (
+          keys[key.sprint] &&
+          !isSprintKeyPressed &&
+          moveCoolCount.sprint <= 0 &&
+          moveCoolCount.wallJump <= 0
+        ) {
+          velocity.x = speed.air * multiplier.sprint * direction;
+          velocity.y = -jump.sprint;
+          moveCoolCount.sprint = moveCooldown.sprint;
           isSprintKeyPressed = true;
         }
 
         // クールダウン
-        if (sprintCount > 0) {
-          sprintCount--;
-        } else if (sprintCount < 0) {
-          sprintCount = 0;
+        if (moveCoolCount.sprint > 0) {
+          moveCoolCount.sprint--;
+        } else if (moveCoolCount.sprint < 0) {
+          moveCoolCount.sprint = 0;
         }
-        if (wallJumpCount > 0) {
-          wallJumpCount--;
-        } else if (wallJumpCount < 0) {
-          wallJumpCount = 0;
+        if (moveCoolCount.wallJump > 0) {
+          moveCoolCount.wallJump--;
+        } else if (moveCoolCount.wallJump < 0) {
+          moveCoolCount.wallJump = 0;
         }
 
         // 移動
         if (isOnGround) {
-          velocityX *= groundFriction;
+          velocity.x *= friction.ground;
         } else {
-          velocityX *= airFriction;
+          velocity.x *= friction.air;
         }
-        if (Math.abs(velocityX) < 0.05) {
-          velocityX = 0;
+        if (Math.abs(velocity.x) < 0.05) {
+          velocity.x = 0;
         }
-        player.x += velocityX;
-        velocityY += gravity * gravityModifier;
-        player.y += velocityY;
+        player.x += velocity.x;
+        velocity.y += gravity * gravityMultiplier;
+        player.y += velocity.y;
 
         // 地面との衝突判定
         if (player.y >= maxY) {
           player.y = maxY;
-          velocityY = 0;
+          velocity.y = 0;
           isOnGround = true;
           isDoubleJumped = false;
         } else if (player.y <= minY) {
           player.y = minY;
-          velocityY = 0;
+          velocity.y = 0;
         }
 
         // 境界チェック
@@ -179,7 +210,7 @@ function App() {
         }
 
         // キューブの回転
-        player.rotation += velocityX * 0.03;
+        player.rotation += velocity.x * 0.03;
       };
 
       document.addEventListener("keydown", onKeyDown);

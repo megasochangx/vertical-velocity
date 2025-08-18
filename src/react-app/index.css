@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Sans+JP:wght@100..900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Noto+Sans+JP:wght@100..900&display=swap");
 @import "tailwindcss";
 
 @layer base {
   body {
     @apply bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
-    font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    font-family: "Inter", "Noto Sans JP", sans-serif;
   }
 
   h1 {

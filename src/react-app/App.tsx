@@ -161,6 +161,7 @@ function App() {
             velocity.y = -jump.wall;
             moveTimer.wallJump = moveFrames.wallJump;
             direction = -direction;
+            isDoubleJumped = false;
             isSprinted = false;
           } else if (!isDoubleJumped) {
             velocity.y = -jump.air;

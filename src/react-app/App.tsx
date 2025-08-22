@@ -5,7 +5,7 @@ function App() {
   useEffect(() => {
     // キャンバス要素を取得
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-    
+
     // Pixiアプリケーション
     const app = new Application();
     (async () => {
@@ -19,7 +19,7 @@ function App() {
       const playerWidth = 60;
       const playerHeight = 60;
       const playerColor = 0xff0000;
-      const key = {
+      const moveKey = {
         left: "KeyA",
         right: "KeyD",
         up: "KeyW",
@@ -28,7 +28,6 @@ function App() {
         sprint: "KeyK"
       };
       const gravity = 0.3;
-      let gravityMultiplier = 1;
       const jump = {
         ground: 15,
         air: 13,
@@ -43,22 +42,39 @@ function App() {
         ground: 4,
         air: 6
       };
-      const multiplier = {
-        wallJump: 1.5,
-        sprint: 2.5
-      };
-      const moveCooldown = {
+      const moveFrames = {
         wallJump: 30,
         sprint: 40
       };
 
       // プレイヤーの状態
       let direction = 1;
-      const velocity = { x: 0, y: 0 };
-      const moveCoolCount = { wallJump: 0, sprint: 0 };
+      const velocity = {
+        x: 0,
+        y: 0
+      };
+      const moveTimer = {
+        wallJump: 0,
+        sprint: 0
+      };
+      const multiplier = {
+        gravity: 1,
+        wallJump: 1.5,
+        sprint: 2.5
+      };
+      const canUseMove = {
+        get wallJump() {
+          return moveTimer.wallJump <= 0;
+        },
+        get sprint() {
+          return moveTimer.sprint <= 0;
+        }
+      };
+      const canHorizontalMove = () => canUseMove.wallJump && canUseMove.sprint;
       let isOnGround = false;
       let isOnWall = false;
       let isDoubleJumped = false;
+      let isSprinted = false;
       let isJumpKeyPressed = false;
       let isSprintKeyPressed = false;
 
@@ -87,95 +103,81 @@ function App() {
       // キーが離されたときの処理
       const onKeyUp = (e: KeyboardEvent) => {
         keys[e.code] = false;
-        if (e.code === key.jump) {
+        if (e.code === moveKey.jump) {
           isJumpKeyPressed = false;
         }
-        if (e.code === key.sprint) {
+        if (e.code === moveKey.sprint) {
           isSprintKeyPressed = false;
         }
       };
 
+
       // ゲームループ
       const gameLoop = () => {
+        // キー操作
         // 落下速度の調整
         if (!isOnGround && velocity.y > 0) {
-          if (keys[key.up]) {
-            gravityMultiplier = 0.5;
-          } else if (keys[key.down]) {
-            gravityMultiplier = 2;
+          if (keys[moveKey.up] && !keys[moveKey.down]) {
+            multiplier.gravity = 0.5;
+          } else if (!keys[moveKey.up] && keys[moveKey.down]) {
+            multiplier.gravity = 2;
           } else {
-            gravityMultiplier = 1;
+            multiplier.gravity = 1;
           }
         } else {
-          gravityMultiplier = 1;
+          multiplier.gravity = 1;
         }
-        // 移動
-        if (moveCoolCount.sprint <= 0 && moveCoolCount.wallJump <= 0) {
-          if (keys[key.left] && keys[key.right]) {
-            velocity.x = 0;
-          } else if (keys[key.left]) {
-            if (velocity.x > -speed.air) {
-              if (isOnGround) {
-                velocity.x = -speed.ground;
-              } else {
-                velocity.x = -speed.air;
-              }
-            }
+        // 横移動
+        if (canHorizontalMove()) {
+          if (keys[moveKey.left] && !keys[moveKey.right]) {
             direction = -1;
-          } else if (keys[key.right]) {
-            if (velocity.x < speed.air) {
-              if (isOnGround) {
-                velocity.x = speed.ground;
-              } else {
-                velocity.x = speed.air;
-              }
-            }
+            velocity.x = (isOnGround ? speed.ground : speed.air) * direction;
+          } else if (!keys[moveKey.left] && keys[moveKey.right]) {
             direction = 1;
+            velocity.x = (isOnGround ? speed.ground : speed.air) * direction;
           }
         }
-        if (keys[key.jump] && !isJumpKeyPressed) {
+        // ジャンプ系
+        if (keys[moveKey.jump] && !isJumpKeyPressed) {
           if (isOnGround) {
             velocity.y = -jump.ground;
-            isJumpKeyPressed = true;
-          } else if (isOnWall && !isOnGround && moveCoolCount.wallJump <= 0) {
+            isSprinted = false;
+          } else if (isOnWall && !isOnGround && canUseMove.wallJump) {
             velocity.x = speed.air * multiplier.wallJump * -direction;
             velocity.y = -jump.wall;
-            isDoubleJumped = false;
-            moveCoolCount.wallJump = moveCooldown.wallJump;
+            moveTimer.wallJump = moveFrames.wallJump;
             direction = -direction;
-            isJumpKeyPressed = true;
+            isSprinted = false;
           } else if (!isDoubleJumped) {
             velocity.y = -jump.air;
             isDoubleJumped = true;
-            isJumpKeyPressed = true;
+            isSprinted = false;
           }
           isOnGround = false;
+          isJumpKeyPressed = true;
         }
-        if (
-          keys[key.sprint] &&
-          !isSprintKeyPressed &&
-          moveCoolCount.sprint <= 0 &&
-          moveCoolCount.wallJump <= 0
-        ) {
-          velocity.x = speed.air * multiplier.sprint * direction;
-          velocity.y = -jump.sprint;
-          moveCoolCount.sprint = moveCooldown.sprint;
-          isSprintKeyPressed = true;
+        // スプリント
+        if (keys[moveKey.sprint] && !isSprintKeyPressed && canHorizontalMove() && !isSprinted) {
+            velocity.x = speed.air * multiplier.sprint * direction;
+            velocity.y = -jump.sprint;
+            moveTimer.sprint = moveFrames.sprint;
+            isSprintKeyPressed = true;
+            isSprinted = true;
         }
 
-        // クールダウン
-        if (moveCoolCount.sprint > 0) {
-          moveCoolCount.sprint--;
-        } else if (moveCoolCount.sprint < 0) {
-          moveCoolCount.sprint = 0;
+        // クールダウンの更新
+        if (moveTimer.sprint > 0) {
+          moveTimer.sprint--;
+        } else if (moveTimer.sprint < 0) {
+          moveTimer.sprint = 0;
         }
-        if (moveCoolCount.wallJump > 0) {
-          moveCoolCount.wallJump--;
-        } else if (moveCoolCount.wallJump < 0) {
-          moveCoolCount.wallJump = 0;
+        if (moveTimer.wallJump > 0) {
+          moveTimer.wallJump--;
+        } else if (moveTimer.wallJump < 0) {
+          moveTimer.wallJump = 0;
         }
 
-        // 移動
+        // 移動処理
         if (isOnGround) {
           velocity.x *= friction.ground;
         } else {
@@ -185,7 +187,7 @@ function App() {
           velocity.x = 0;
         }
         player.x += velocity.x;
-        velocity.y += gravity * gravityMultiplier;
+        velocity.y += gravity * multiplier.gravity;
         player.y += velocity.y;
 
         // 地面との衝突判定
@@ -194,6 +196,7 @@ function App() {
           velocity.y = 0;
           isOnGround = true;
           isDoubleJumped = false;
+          isSprinted = false;
         } else if (player.y <= minY) {
           player.y = minY;
           velocity.y = 0;

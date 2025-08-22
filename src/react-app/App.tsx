@@ -43,8 +43,8 @@ function App() {
         air: 6
       };
       const moveFrames = {
-        wallJump: 30,
-        sprint: 40
+        wallJump: 10,
+        sprint: 10
       };
 
       // プレイヤーの状態
@@ -111,9 +111,23 @@ function App() {
         }
       };
 
+      // フレームごとに実行される処理
+      const updatePerFrame = () => {
+        // クールダウンの更新
+        if (moveTimer.sprint > 0) {
+          moveTimer.sprint--;
+        } else if (moveTimer.sprint < 0) {
+          moveTimer.sprint = 0;
+        }
+        if (moveTimer.wallJump > 0) {
+          moveTimer.wallJump--;
+        } else if (moveTimer.wallJump < 0) {
+          moveTimer.wallJump = 0;
+        }
+      };
 
-      // ゲームループ
-      const gameLoop = () => {
+      // tickごとに実行される処理
+      const updatePerTick = () => {
         // キー操作
         // 落下速度の調整
         if (!isOnGround && velocity.y > 0) {
@@ -165,18 +179,6 @@ function App() {
             isSprinted = true;
         }
 
-        // クールダウンの更新
-        if (moveTimer.sprint > 0) {
-          moveTimer.sprint--;
-        } else if (moveTimer.sprint < 0) {
-          moveTimer.sprint = 0;
-        }
-        if (moveTimer.wallJump > 0) {
-          moveTimer.wallJump--;
-        } else if (moveTimer.wallJump < 0) {
-          moveTimer.wallJump = 0;
-        }
-
         // 移動処理
         if (isOnGround) {
           velocity.x *= friction.ground;
@@ -214,6 +216,20 @@ function App() {
 
         // キューブの回転
         player.rotation += velocity.x * 0.03;
+      };
+
+      
+      // ゲームスピードの固定
+      let lastFrameTime = performance.now();
+      const frameInterval = 1000 / 60;
+
+      const gameLoop = () => {
+        updatePerTick();
+        const now = performance.now();
+        if (now - lastFrameTime >= frameInterval) {
+          updatePerFrame();
+          lastFrameTime = now;
+        }
       };
 
       document.addEventListener("keydown", onKeyDown);

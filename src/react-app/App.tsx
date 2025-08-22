@@ -32,11 +32,11 @@ function App() {
         ground: 40,
         air: 30,
         wall: 25,
-        sprint: 5
+        sprint: 10
       };
       const friction = {
         ground: 0.8,
-        air: 0.95
+        air: 0.92
       };
       const speed = {
         ground: 15,
@@ -221,21 +221,15 @@ function App() {
 
       
       // ゲームスピードの固定
-      let lastFrameTime = performance.now();
-      const frameInterval = 1000 / 60;
-
+      const maxFps = 60;
       const gameLoop = () => {
         updatePerTick();
-        const now = performance.now();
-        if (now - lastFrameTime >= frameInterval) {
-          updatePerFrame();
-          lastFrameTime = now;
-        }
+        updatePerFrame();
       };
 
       document.addEventListener("keydown", onKeyDown);
       document.addEventListener("keyup", onKeyUp);
-      app.ticker.maxFPS = 60;
+      app.ticker.maxFPS = maxFps;
       app.ticker.add(gameLoop);
     })()
   }, []);

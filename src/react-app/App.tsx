@@ -27,23 +27,23 @@ function App() {
         jump: "KeyJ",
         sprint: "KeyK"
       };
-      const gravity = 0.3;
+      const gravity = 2;
       const jump = {
-        ground: 15,
-        air: 13,
-        wall: 10,
-        sprint: 3
+        ground: 40,
+        air: 30,
+        wall: 25,
+        sprint: 5
       };
       const friction = {
-        ground: 0.9,
-        air: 0.975
+        ground: 0.8,
+        air: 0.95
       };
       const speed = {
-        ground: 4,
-        air: 6
+        ground: 15,
+        air: 15
       };
       const moveFrames = {
-        wallJump: 10,
+        wallJump: 8,
         sprint: 10
       };
 
@@ -235,7 +235,7 @@ function App() {
 
       document.addEventListener("keydown", onKeyDown);
       document.addEventListener("keyup", onKeyUp);
-
+      app.ticker.maxFPS = 60;
       app.ticker.add(gameLoop);
     })()
   }, []);

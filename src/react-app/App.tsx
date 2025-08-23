@@ -31,7 +31,7 @@ function App() {
       const jump = {
         ground: 40,
         air: 30,
-        wall: 25,
+        wallJump: 20,
         sprint: 10
       };
       const friction = {
@@ -43,7 +43,7 @@ function App() {
         air: 15
       };
       const moveFrames = {
-        wallJump: 8,
+        wallJump: 10,
         sprint: 10
       };
 
@@ -158,7 +158,7 @@ function App() {
             isSprinted = false;
           } else if (isOnWall && !isOnGround && canUseMove.wallJump) {
             velocity.x = speed.air * multiplier.wallJump * -direction;
-            velocity.y = -jump.wall;
+            velocity.y = -jump.wallJump;
             moveTimer.wallJump = moveFrames.wallJump;
             direction = -direction;
             isDoubleJumped = false;
